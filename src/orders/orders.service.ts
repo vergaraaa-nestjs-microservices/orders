@@ -10,7 +10,7 @@ import { PrismaClient } from '@prisma/client';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { OrdersPaginationDto } from './dto/orders-pagination.dto';
 import { ChangeOrderStatusDto } from './dto/change-order-status.dto';
-import { PRODUCTS_SERVICE } from 'src/config/services';
+import { NATS_SERVICE } from 'src/config/services';
 import { catchError, firstValueFrom } from 'rxjs';
 import { Product } from 'src/common/dto/product.dto';
 
@@ -18,9 +18,7 @@ import { Product } from 'src/common/dto/product.dto';
 export class OrdersService extends PrismaClient implements OnModuleInit {
   private readonly logger = new Logger('Orders service');
 
-  constructor(
-    @Inject(PRODUCTS_SERVICE) private readonly productsClient: ClientProxy,
-  ) {
+  constructor(@Inject(NATS_SERVICE) private readonly client: ClientProxy) {
     super();
   }
 
@@ -33,7 +31,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     const productsIds = createOrderDto.items.map((item) => item.productId);
 
     const products = await firstValueFrom<Product[]>(
-      this.productsClient
+      this.client
         .send<Product[]>({ cmd: 'validate_products' }, productsIds)
         .pipe(
           catchError((error) => {
@@ -145,7 +143,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     const productsIds = order.OrderItem.map((item) => item.productId);
 
     const products = await firstValueFrom<Product[]>(
-      this.productsClient
+      this.client
         .send<Product[]>({ cmd: 'validate_products' }, productsIds)
         .pipe(
           catchError((error) => {
