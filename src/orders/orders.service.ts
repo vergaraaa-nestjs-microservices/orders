@@ -87,11 +87,12 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
 
     return {
       ...order,
-      OrderItem: order.OrderItem.map((orderItem) => ({
+      items: order.OrderItem.map((orderItem) => ({
         ...orderItem,
         name: products.find((product) => product.id === orderItem.productId)
           ?.name,
       })),
+      OrderItem: undefined,
     };
   }
 
@@ -124,6 +125,15 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
   async findOne(id: string) {
     const order = await this.order.findUnique({
       where: { id },
+      include: {
+        OrderItem: {
+          select: {
+            productId: true,
+            price: true,
+            quantity: true,
+          },
+        },
+      },
     });
 
     if (!order)
@@ -132,7 +142,31 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
         status: HttpStatus.NOT_FOUND,
       });
 
-    return order;
+    const productsIds = order.OrderItem.map((item) => item.productId);
+
+    const products = await firstValueFrom<Product[]>(
+      this.productsClient
+        .send<Product[]>({ cmd: 'validate_products' }, productsIds)
+        .pipe(
+          catchError((error) => {
+            if (typeof error === 'object') {
+              throw new RpcException(error as object);
+            }
+
+            throw new RpcException('Unknown error');
+          }),
+        ),
+    );
+
+    return {
+      ...order,
+      items: order.OrderItem.map((orderItem) => ({
+        ...orderItem,
+        name: products.find((product) => product.id === orderItem.productId)
+          ?.name,
+      })),
+      OrderItem: undefined,
+    };
   }
 
   async changeStatus(changeOrderStatusDto: ChangeOrderStatusDto) {
