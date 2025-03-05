@@ -36,7 +36,6 @@ export class OrdersController {
 
   @EventPattern('payment.succeded')
   paymentSucceded(@Payload() paymentSuccededDto: PaymentSuccededDto) {
-    console.log({ paymentSuccededDto });
-    return;
+    return this.ordersService.paymentSucceded(paymentSuccededDto);
   }
 }

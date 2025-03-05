@@ -15,6 +15,7 @@ import { catchError, firstValueFrom } from 'rxjs';
 import { Product } from 'src/common/dto/product.dto';
 import { OrderWithProducts } from './interfaces/order-with-products.interface';
 import { StripePaymentSessionCreated } from './interfaces/stripe-payment-session-created.interface.dto';
+import { PaymentSuccededDto } from './dto/payment-succeded.dto';
 
 @Injectable()
 export class OrdersService extends PrismaClient implements OnModuleInit {
@@ -208,5 +209,26 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     );
 
     return paymentSession;
+  }
+
+  async paymentSucceded(paymentSuccededDto: PaymentSuccededDto) {
+    const order = await this.order.update({
+      where: { id: paymentSuccededDto.orderId },
+      data: {
+        paid: true,
+        status: 'PAID',
+        paidAt: new Date(),
+        stripeChargeId: paymentSuccededDto.stripePaymentId,
+
+        // relation
+        OrderReceipt: {
+          create: {
+            receiptUrl: paymentSuccededDto.receiptUrl,
+          },
+        },
+      },
+    });
+
+    return order;
   }
 }
