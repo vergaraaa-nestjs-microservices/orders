@@ -13,6 +13,8 @@ import { ChangeOrderStatusDto } from './dto/change-order-status.dto';
 import { NATS_SERVICE } from 'src/config/services';
 import { catchError, firstValueFrom } from 'rxjs';
 import { Product } from 'src/common/dto/product.dto';
+import { OrderWithProducts } from './interfaces/order-with-products.interface';
+import { StripePaymentSessionCreated } from './interfaces/stripe-payment-session-created.interface.dto';
 
 @Injectable()
 export class OrdersService extends PrismaClient implements OnModuleInit {
@@ -180,5 +182,31 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
       where: { id },
       data: { status },
     });
+  }
+
+  async createPaymentSession(order: OrderWithProducts) {
+    const paymentSession = await firstValueFrom<StripePaymentSessionCreated>(
+      this.client
+        .send<StripePaymentSessionCreated>('create.payment.session', {
+          orderId: order.id,
+          currency: 'usd',
+          items: order.items.map((item) => ({
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+        })
+        .pipe(
+          catchError((error) => {
+            if (typeof error === 'object') {
+              throw new RpcException(error as object);
+            }
+
+            throw new RpcException('Unknown error');
+          }),
+        ),
+    );
+
+    return paymentSession;
   }
 }
