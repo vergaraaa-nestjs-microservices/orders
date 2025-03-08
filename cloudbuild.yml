@@ -1,0 +1,21 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'build',
+        '-t',
+        'europe-west12-docker.pkg.dev/nestjs-microservices-453105/image-registry/orders',
+        '-f',
+        'dockerfile.prod',
+        '--platform=linux/amd64',
+        '.',
+      ]
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'push',
+        'europe-west12-docker.pkg.dev/nestjs-microservices-453105/image-registry/orders',
+      ]
+
+options:
+  logging: CLOUD_LOGGING_ONLY
